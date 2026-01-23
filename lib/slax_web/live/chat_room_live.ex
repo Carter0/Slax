@@ -52,6 +52,9 @@ defmodule SlaxWeb.ChatRoomLive do
   attr :active, :boolean, required: true
   attr :room, Room, required: true
 
+  # Patch makes it so that handle_params does something
+  # and that means we don't need to reload all the rooms every time
+  # Patch only works on a page served by the same liveview.
   defp room_link(assigns) do
     ~H"""
     <.link
@@ -59,7 +62,7 @@ defmodule SlaxWeb.ChatRoomLive do
         "flex items-center h-8 text-sm pl-8 pr-3",
         (@active && "bg-slate-300") || "hover:bg-slate-300"
       ]}
-      navigate={~p"/rooms/#{@room}"}
+      patch={~p"/rooms/#{@room}"}
     >
       <.icon name="hero-hashtag" class="h-4 w-4" />
       <span class={["ml-2 leading-none", @active && "font-bold"]}>{@room.name}</span>
@@ -67,16 +70,20 @@ defmodule SlaxWeb.ChatRoomLive do
     """
   end
 
-  def mount(params, _session, socket) do
+  def mount(_params, _session, socket) do
     rooms = Repo.all(Room)
 
+    {:ok, assign(socket, rooms: rooms)}
+  end
+
+  def handle_params(params, _uri, socket) do
     room =
       case Map.fetch(params, "id") do
-        :error -> List.first(rooms)
+        :error -> List.first(socket.assigns.rooms)
         {:ok, room_id} -> Repo.get!(Room, room_id)
       end
 
-    {:ok, assign(socket, hide_topic?: false, room: room, rooms: rooms)}
+    {:noreply, assign(socket, hide_topic?: false, room: room)}
   end
 
   def handle_event("toggle-topic", _params, socket) do
