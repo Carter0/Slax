@@ -2,6 +2,14 @@ defmodule Slax.Chat.Room do
   use Ecto.Schema
   import Ecto.Changeset
 
+  @type t :: %__MODULE__{
+          id: non_neg_integer(),
+          name: String.t(),
+          topic: String.t() | nil,
+          inserted_at: NaiveDateTime.t(),
+          updated_at: NaiveDateTime.t()
+        }
+
   schema "rooms" do
     field :name, :string
     field :topic, :string
