@@ -27,5 +27,11 @@ defmodule Slax.Chat.Room do
       message: "can only contain lowercase letters, numbers, and dashes"
     )
     |> validate_length(:topic, max: 200)
+    # unsafe_validate_unique queries the database before attempting an insert or update
+    # the unique constraint only checks on update
+    # Both are useful because unsafe_validate_unique is fullproof but has better ux for the end
+    # user
+    |> unsafe_validate_unique(:name, Slax.Repo)
+    |> unique_constraint(:name)
   end
 end
