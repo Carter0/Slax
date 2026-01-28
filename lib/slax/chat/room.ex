@@ -2,6 +2,8 @@ defmodule Slax.Chat.Room do
   use Ecto.Schema
   import Ecto.Changeset
 
+  alias Slax.Chat.Message
+
   @type t :: %__MODULE__{
           id: non_neg_integer(),
           name: String.t(),
@@ -13,6 +15,8 @@ defmodule Slax.Chat.Room do
   schema "rooms" do
     field :name, :string
     field :topic, :string
+
+    has_many :messages, Message
 
     timestamps(type: :utc_datetime)
   end
