@@ -1,5 +1,5 @@
 defmodule Slax.Chat do
-  alias Slax.Chat.Room
+  alias Slax.Chat.{Room, Message}
   alias Slax.Repo
 
   import Ecto.Query
@@ -28,10 +28,18 @@ defmodule Slax.Chat do
     |> Repo.insert()
   end
 
-  @spec update_room(Room.t(), map()) :: Room.t()
+  @spec update_room(Room.t(), map()) :: {:ok, Room.t()} | {:error, Ecto.Changeset.t()}
   def update_room(%Room{} = room, attrs) do
     room
     |> Room.changeset(attrs)
     |> Repo.update()
+  end
+
+  @spec list_messages_in_room(Room.t()) :: [Message.t()]
+  def list_messages_in_room(%Room{id: room_id}) do
+    Message
+    |> where([m], m.id == ^room_id)
+    |> order_by([m], asc: :inserted_at, asc: :id)
+    |> Repo.all()
   end
 end
