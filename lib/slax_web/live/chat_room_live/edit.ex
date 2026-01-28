@@ -26,8 +26,15 @@ defmodule SlaxWeb.ChatRoomLive.Edit do
           phx-change="validate-room"
           phx-submit="save-room"
         >
-          <.input field={@form[:name]} type="text" label="Name" />
-          <.input field={@form[:topic]} type="text" label="Topic" />
+          <!--
+        phx-debounce tells LiveView to add a 300 millisecond delay in
+        between pressing the key and triggering the "validate-room" event.
+        If you press another key before the 300ms is up, LiveView will
+        reset the timer. When an entire 300ms passes with no new changes,
+        LiveView will emit one event representing the most recent change
+        -->
+          <.input field={@form[:name]} type="text" label="Name" phx-debounce />
+          <.input field={@form[:topic]} type="text" label="Topic" phx-debounce />
           <div class="mt-2 flex items-center justify-between gap-6">
             <.button phx-disable-with="Saving..." class="btn btn-primary w-full">
               Save
