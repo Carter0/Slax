@@ -50,6 +50,17 @@ defmodule SlaxWeb.ChatRoomLive do
               <% end %>
             </div>
           </div>
+          <ul class="menu menu-horizontal w-full relative z-10 flex items-center gap-4 px-4 sm:px-6 lg:px-8 justify-end">
+            <li>
+              {@current_scope.user.email}
+            </li>
+            <li>
+              <.link href={~p"/users/settings"}>Settings</.link>
+            </li>
+            <li>
+              <.link href={~p"/users/log-out"} method="delete">Log out</.link>
+            </li>
+          </ul>
         </div>
       </div>
     </Layouts.app>
