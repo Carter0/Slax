@@ -18,6 +18,8 @@ defmodule Slax.Accounts.Scope do
 
   alias Slax.Accounts.User
 
+  @type t :: %__MODULE__{user: User.t() | nil}
+
   defstruct user: nil
 
   @doc """
@@ -25,6 +27,7 @@ defmodule Slax.Accounts.Scope do
 
   Returns nil if no user is given.
   """
+  @spec for_user(User.t() | nil) :: t() | nil
   def for_user(%User{} = user) do
     %__MODULE__{user: user}
   end

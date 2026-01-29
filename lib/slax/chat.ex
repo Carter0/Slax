@@ -1,4 +1,5 @@
 defmodule Slax.Chat do
+  alias Slax.Accounts.Scope
   alias Slax.Chat.{Room, Message}
   alias Slax.Repo
 
@@ -21,7 +22,7 @@ defmodule Slax.Chat do
     Room.changeset(room, attrs)
   end
 
-  @spec create_room(map()) :: Room.t()
+  @spec create_room(map()) :: {:ok, Ecto.Schema.t()} | {:error, Ecto.Changeset.t()}
   def create_room(attrs) do
     %Room{}
     |> Room.changeset(attrs)
@@ -42,5 +43,18 @@ defmodule Slax.Chat do
     |> order_by([m], asc: :inserted_at, asc: :id)
     |> preload(:user)
     |> Repo.all()
+  end
+
+  @spec change_message(Message.t(), map(), Scope.t()) :: Ecto.Changeset.t()
+  def change_message(message, attrs \\ %{}, scope) do
+    Message.changeset(message, attrs, scope)
+  end
+
+  @spec create_message(Room.t(), map(), Scope.t()) ::
+          {:ok, Message.t()} | {:error, Ecto.Changeset.t()}
+  def create_message(room, attrs, scope) do
+    %Message{room: room}
+    |> Message.changeset(attrs, scope)
+    |> Repo.insert()
   end
 end

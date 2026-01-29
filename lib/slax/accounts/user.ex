@@ -2,6 +2,16 @@ defmodule Slax.Accounts.User do
   use Ecto.Schema
   import Ecto.Changeset
 
+  @type t :: %__MODULE__{
+          email: String.t(),
+          password: String.t(),
+          hashed_password: String.t(),
+          confirmed_at: NaiveDateTime.t(),
+          authenticated_at: NaiveDateTime.t(),
+          inserted_at: NaiveDateTime.t(),
+          updated_at: NaiveDateTime.t()
+        }
+
   schema "users" do
     field :email, :string
     field :password, :string, virtual: true, redact: true
