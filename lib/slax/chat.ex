@@ -57,4 +57,12 @@ defmodule Slax.Chat do
     |> Message.changeset(attrs, scope)
     |> Repo.insert()
   end
+
+  @spec delete_message_by_id(integer(), Scope.t()) ::
+          {:ok, Message.t()} | {:error, Ecto.Changeset.t()}
+  def delete_message_by_id(id, %Scope{user: user}) do
+    message = Repo.get_by!(Message, id: id, user_id: user.id)
+
+    Repo.delete(message)
+  end
 end

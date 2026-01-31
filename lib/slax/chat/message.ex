@@ -5,14 +5,7 @@ defmodule Slax.Chat.Message do
   alias Slax.Accounts.User
   alias Slax.Chat.Room
 
-  @type t :: %__MODULE__{
-          id: non_neg_integer(),
-          body: String.t(),
-          room_id: non_neg_integer(),
-          user_id: non_neg_integer(),
-          inserted_at: NaiveDateTime.t(),
-          updated_at: NaiveDateTime.t()
-        }
+  @type t :: %__MODULE__{}
 
   schema "messages" do
     field :body, :string
