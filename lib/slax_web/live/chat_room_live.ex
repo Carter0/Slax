@@ -1,7 +1,7 @@
 defmodule SlaxWeb.ChatRoomLive do
   use SlaxWeb, :live_view
 
-  alias Slax.{Chat, Repo}
+  alias Slax.Chat
   alias Slax.Chat.{Room, Message}
 
   def render(assigns) do
@@ -165,6 +165,8 @@ defmodule SlaxWeb.ChatRoomLive do
     """
   end
 
+  # This is called whenever the page is refreshed
+  # This is called whenever the a new live view is loaded
   def mount(_params, _session, socket) do
     rooms = Chat.list_rooms()
 
@@ -173,13 +175,21 @@ defmodule SlaxWeb.ChatRoomLive do
     {:ok, assign(socket, rooms: rooms, timezone: timezone)}
   end
 
+  # This is called whenever a new topic is loaded.
+  # This is called whenever the same live view is loaded
   def handle_params(params, _uri, socket) do
+    # unsubscribe from the old room
+    if socket.assigns[:room], do: Chat.unsubscribe_from_room(socket.assigns.room)
+
+    # get the new room
     room =
       case Map.fetch(params, "id") do
         :error -> List.first(socket.assigns.rooms)
         {:ok, room_id} -> Chat.get_room!(room_id)
       end
 
+    # subscribe to the new room
+    Chat.subscribe_to_room(room)
     messages = Chat.list_messages_in_room(room)
 
     socket =
@@ -212,14 +222,10 @@ defmodule SlaxWeb.ChatRoomLive do
   def handle_event("submit-message", %{"message" => message_params}, socket) do
     %{current_scope: current_scope, room: room} = socket.assigns
 
-    IO.inspect(current_scope)
-
     socket =
       case Chat.create_message(room, message_params, current_scope) do
-        {:ok, message} ->
-          socket
-          |> stream_insert(:messages, Repo.preload(message, :user))
-          |> assign_message_form(Chat.change_message(%Message{}, %{}, current_scope))
+        {:ok, _message} ->
+          assign_message_form(socket, Chat.change_message(%Message{}, %{}, current_scope))
 
         {:error, changeset} ->
           assign_message_form(socket, changeset)
@@ -229,8 +235,17 @@ defmodule SlaxWeb.ChatRoomLive do
   end
 
   def handle_event("delete-message", %{"id" => id}, socket) do
-    {:ok, message} = Chat.delete_message_by_id(id, socket.assigns.current_scope)
+    Chat.delete_message_by_id(id, socket.assigns.current_scope)
+  end
 
+  # Streams are useful for rendering chunks of data (like lists)
+  # on the client instead of the server.
+  # This is an optimization.
+  def handle_info({:new_message, message}, socket) do
+    {:noreply, stream_insert(socket, :messages, message)}
+  end
+
+  def handle_info({:message_deleted, message}, socket) do
     {:noreply, stream_delete(socket, :messages, message)}
   end
 end

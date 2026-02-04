@@ -5,6 +5,8 @@ defmodule Slax.Chat do
 
   import Ecto.Query
 
+  @pubsub Slax.PubSub
+
   @spec list_rooms() :: [Room.t()]
   def list_rooms do
     Room
@@ -50,19 +52,48 @@ defmodule Slax.Chat do
     Message.changeset(message, attrs, scope)
   end
 
+  ####################### PUBSUB ###########################
+
+  # Pubsub stands for the (publish-subscribe) pattern.
+
+  # I am using pubsub because I want users to see updates on slax pages
+  # without having to reload the page. By using the BEAM and processes specifically,
+  # I can pass messages to process to update the page in real time.
+
+  # Pubsub is implemented in Phoenix for us and is easy to use in elixir with
+  # elixir's built in concurrency features.
+
   @spec create_message(Room.t(), map(), Scope.t()) ::
           {:ok, Message.t()} | {:error, Ecto.Changeset.t()}
   def create_message(room, attrs, scope) do
-    %Message{room: room}
-    |> Message.changeset(attrs, scope)
-    |> Repo.insert()
+    with {:ok, message} <-
+           %Message{room: room}
+           |> Message.changeset(attrs, scope)
+           |> Repo.insert() do
+      message = Repo.preload(message, :user)
+      Phoenix.PubSub.broadcast!(@pubsub, topic(room.id), {:new_message, message})
+      {:ok, message}
+    end
   end
 
-  @spec delete_message_by_id(integer(), Scope.t()) ::
-          {:ok, Message.t()} | {:error, Ecto.Changeset.t()}
+  @spec delete_message_by_id(integer(), Scope.t()) :: :ok
   def delete_message_by_id(id, %Scope{user: user}) do
     message = Repo.get_by!(Message, id: id, user_id: user.id)
 
     Repo.delete(message)
+
+    Phoenix.PubSub.broadcast!(@pubsub, topic(message.room_id), {:message_deleted, message})
   end
+
+  @spec subscribe_to_room(Room.t()) :: :ok | {:error, term()}
+  def subscribe_to_room(room) do
+    Phoenix.PubSub.subscribe(@pubsub, topic(room.id))
+  end
+
+  @spec unsubscribe_from_room(Room.t()) :: :ok
+  def unsubscribe_from_room(room) do
+    Phoenix.PubSub.unsubscribe(@pubsub, topic(room.id))
+  end
+
+  defp topic(room_id), do: "chat_room:#{room_id}"
 end
