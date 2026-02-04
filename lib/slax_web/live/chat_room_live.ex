@@ -63,7 +63,12 @@ defmodule SlaxWeb.ChatRoomLive do
           </ul>
         </div>
 
-        <div id="room-messages" class="flex flex-col grow overflow-auto" phx-update="stream">
+        <div
+          id="room-messages"
+          class="flex flex-col grow overflow-auto"
+          phx-hook="RoomMessages"
+          phx-update="stream"
+        >
           <.message
             :for={{dom_id, message} <- @streams.messages}
             current_user={@current_scope.user}
@@ -86,6 +91,7 @@ defmodule SlaxWeb.ChatRoomLive do
               cols=""
               id="chat-message-textarea"
               name={@new_message_form[:body].name}
+              phx-hook="ChatMessageTextarea"
               placeholder={"Message ##{@room.name}"}
               phx-debounce
               rows="1"
@@ -201,6 +207,7 @@ defmodule SlaxWeb.ChatRoomLive do
       )
       |> stream(:messages, messages, reset: true)
       |> assign_message_form(Chat.change_message(%Message{}, %{}, socket.assigns.current_scope))
+      |> push_event("scroll_messages_to_bottom", %{})
 
     {:noreply, socket}
   end
@@ -242,7 +249,13 @@ defmodule SlaxWeb.ChatRoomLive do
   # on the client instead of the server.
   # This is an optimization.
   def handle_info({:new_message, message}, socket) do
-    {:noreply, stream_insert(socket, :messages, message)}
+    socket =
+      socket
+      |> stream_insert(:messages, message)
+      # When you push an event with push_event/3, you’re pushing an event to the client
+      |> push_event("scroll_messages_to_bottom", %{})
+
+    {:noreply, socket}
   end
 
   def handle_info({:message_deleted, message}, socket) do
