@@ -21,7 +21,7 @@ defmodule Slax.MixProject do
   def application do
     [
       mod: {Slax.Application, []},
-      extra_applications: [:logger, :runtime_tools]
+      extra_applications: [:logger, :runtime_tools, :observer, :wx]
     ]
   end
 
