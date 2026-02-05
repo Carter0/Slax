@@ -12,6 +12,7 @@ defmodule Slax.Application do
       Slax.Repo,
       {DNSCluster, query: Application.get_env(:slax, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Slax.PubSub},
+      SlaxWeb.Presence,
       # Start a worker by calling: Slax.Worker.start_link(arg)
       # {Slax.Worker, arg},
       # Start to serve requests, typically the last entry

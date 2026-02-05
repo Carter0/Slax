@@ -294,4 +294,9 @@ defmodule Slax.Accounts do
       end
     end)
   end
+
+  @spec list_users() :: [User.t()]
+  def list_users() do
+    User |> order_by([u], asc: u.email) |> Repo.all()
+  end
 end
