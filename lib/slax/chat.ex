@@ -1,11 +1,17 @@
 defmodule Slax.Chat do
+  alias Slax.Chat.RoomMembership
   alias Slax.Accounts.Scope
-  alias Slax.Chat.{Room, Message}
+  alias Slax.Chat.{Room, RoomMembership, Message}
   alias Slax.Repo
 
   import Ecto.Query
 
   @pubsub Slax.PubSub
+
+  @spec join_room!(Room.t(), User.t()) :: RoomMembership.t()
+  def join_room!(room, user) do
+    Repo.insert!(%RoomMembership{room: room, user: user})
+  end
 
   @spec list_rooms() :: [Room.t()]
   def list_rooms do
