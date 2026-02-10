@@ -5,6 +5,8 @@ defmodule Slax.Chat.RoomMembership do
   alias Slax.Accounts.User
   alias Slax.Chat.Room
 
+  @type t :: %__MODULE__{}
+
   schema "room_memberships" do
     belongs_to :room, Room
     belongs_to :user, User
