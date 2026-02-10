@@ -44,11 +44,12 @@ defmodule SlaxWeb.Router do
   scope "/", SlaxWeb do
     pipe_through [:browser, :require_authenticated_user]
 
+    get "/", RoomController, :redirect_to_first
+
     live_session :require_authenticated_user,
       on_mount: [{SlaxWeb.UserAuth, :require_authenticated}] do
       live "/users/settings", UserLive.Settings, :edit
       live "/users/settings/confirm-email/:token", UserLive.Settings, :confirm_email
-      live "/", ChatRoomLive
       live "/rooms", ChatRoomLive.Index
       live "/rooms/:id", ChatRoomLive
       live "/rooms/:id/edit", ChatRoomLive.Edit

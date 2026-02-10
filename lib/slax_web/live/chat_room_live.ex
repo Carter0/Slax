@@ -290,11 +290,7 @@ defmodule SlaxWeb.ChatRoomLive do
     if socket.assigns[:room], do: Chat.unsubscribe_from_room(socket.assigns.room)
 
     # get the new room
-    room =
-      case Map.fetch(params, "id") do
-        :error -> List.first(socket.assigns.rooms)
-        {:ok, room_id} -> Chat.get_room!(room_id)
-      end
+    room = params |> Map.fetch!("id") |> Chat.get_room!()
 
     # subscribe to the new room
     Chat.subscribe_to_room(room)
