@@ -15,6 +15,20 @@ defmodule Slax.Chat do
     |> Repo.exists?()
   end
 
+  @type joined :: boolean()
+  @spec toggle_room_membership(Room.t(), User.t()) :: {Room.t(), joined}
+  def toggle_room_membership(room, user) do
+    case Repo.get_by(RoomMembership, room_id: room.id, user_id: user.id) do
+      %RoomMembership{} = rm ->
+        Repo.delete!(rm)
+        {room, false}
+
+      nil ->
+        join_room!(room, user)
+        {room, true}
+    end
+  end
+
   @spec join_room!(Room.t(), User.t()) :: RoomMembership.t()
   def join_room!(room, user) do
     Repo.insert!(%RoomMembership{room: room, user: user})
