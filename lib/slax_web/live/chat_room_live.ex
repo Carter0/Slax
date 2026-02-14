@@ -312,7 +312,7 @@ defmodule SlaxWeb.ChatRoomLive do
     {:ok, socket}
   end
 
-  # This is called whenever a new topic is loaded.
+  # This is called whenever a new topic/room is loaded.
   # This is called whenever the same live view is loaded
   def handle_params(params, _uri, socket) do
     # unsubscribe from the old room

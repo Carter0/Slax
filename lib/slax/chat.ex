@@ -35,6 +35,15 @@ defmodule Slax.Chat do
     |> Enum.sort_by(& &1.name)
   end
 
+  @spec list_rooms_with_joined(User.t()) :: [Room.t()]
+  def list_rooms_with_joined(%User{} = user) do
+    Room
+    |> join(:left, [r], rm in RoomMembership, on: rm.room_id == r.id and rm.user_id == ^user.id)
+    |> select([r, rm], {r, not is_nil(rm.id)})
+    |> order_by(asc: :name)
+    |> Repo.all()
+  end
+
   @spec get_room!(integer()) :: Room.t()
   def get_room!(id) do
     Repo.get!(Room, id)
