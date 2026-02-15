@@ -321,9 +321,17 @@ defmodule SlaxWeb.ChatRoomLive do
     # get the new room
     room = params |> Map.fetch!("id") |> Chat.get_room!()
 
+    last_read_at = Chat.get_last_read_at(room, socket.assigns.current_scope.user)
+
+    messages =
+      room
+      |> Chat.list_messages_in_room()
+      |> maybe_insert_unread_marker(last_read_at)
+
+    # update the message the user last saw
+    Chat.update_last_read_at(room, socket.assigns.current_scope.user)
     # subscribe to the new room
     Chat.subscribe_to_room(room)
-    messages = Chat.list_messages_in_room(room)
 
     socket =
       socket
@@ -338,6 +346,19 @@ defmodule SlaxWeb.ChatRoomLive do
       |> push_event("scroll_messages_to_bottom", %{})
 
     {:noreply, socket}
+  end
+
+  defp maybe_insert_unread_marker(messages, nil), do: messages
+
+  defp maybe_insert_unread_marker(messages, last_read_at) do
+    {read, unread} =
+      Enum.split_while(messages, &(DateTime.compare(&1.inserted_at, last_read_at) != :gt))
+
+    if unread == [] do
+      read
+    else
+      read ++ [:unread_marker | unread]
+    end
   end
 
   defp assign_message_form(socket, changeset) do
