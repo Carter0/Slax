@@ -4,6 +4,7 @@ defmodule Slax.Chat do
   alias Slax.Chat.{Room, RoomMembership, Message}
   alias Slax.Repo
 
+  import Ecto.Changeset
   import Ecto.Query
 
   @pubsub Slax.PubSub
@@ -18,7 +19,7 @@ defmodule Slax.Chat do
   @type joined :: boolean()
   @spec toggle_room_membership(Room.t(), User.t()) :: {Room.t(), joined}
   def toggle_room_membership(room, user) do
-    case Repo.get_by(RoomMembership, room_id: room.id, user_id: user.id) do
+    case get_membership(room, user) do
       %RoomMembership{} = rm ->
         Repo.delete!(rm)
         {room, false}
@@ -27,6 +28,40 @@ defmodule Slax.Chat do
         join_room!(room, user)
         {room, true}
     end
+  end
+
+  @spec update_last_read_at(Room.t(), User.t()) :: RoomMembership.t() | nil
+  def update_last_read_at(room, user) do
+    case get_membership(room, user) do
+      %RoomMembership{} = rm ->
+        timestamp =
+          Message
+          |> where([m], m.room_id == ^room.id)
+          |> select([m], max(m.inserted_at))
+          |> Repo.one()
+
+        rm
+        |> change(%{last_read_at: timestamp})
+        |> Repo.update()
+
+      nil ->
+        nil
+    end
+  end
+
+  @spec get_last_read_at(Room.t(), User.t()) :: DateTime.t() | nil
+  def get_last_read_at(%Room{} = room, user) do
+    case get_membership(room, user) do
+      %RoomMembership{} = rm ->
+        rm.last_read_at
+
+      nil ->
+        nil
+    end
+  end
+
+  defp get_membership(room, user) do
+    Repo.get_by(RoomMembership, room_id: room.id, user_id: user.id)
   end
 
   @spec join_room!(Room.t(), User.t()) :: RoomMembership.t()
