@@ -20,7 +20,12 @@ defmodule SlaxWeb.ChatRoomLive do
         <div class="mt-4 overflow-auto">
           <.toggler on_click={toggle_rooms()} dom_id="rooms-toggler" text="Rooms" />
           <div id="rooms-list">
-            <.room_link :for={room <- @rooms} room={room} active={room.id == @room.id} />
+            <.room_link
+              :for={{room, unread_count} <- @rooms}
+              room={room}
+              active={room.id == @room.id}
+              unread_count={unread_count}
+            />
 
             <div class="relative">
               <button
@@ -275,6 +280,7 @@ defmodule SlaxWeb.ChatRoomLive do
 
   attr :active, :boolean, required: true
   attr :room, Room, required: true
+  attr :unread_count, :integer, required: true
 
   # Patch makes it so that handle_params does something
   # and that means we don't need to reload all the rooms every time
@@ -290,14 +296,28 @@ defmodule SlaxWeb.ChatRoomLive do
     >
       <.icon name="hero-hashtag" class="h-4 w-4" />
       <span class={["ml-2 leading-none", @active && "font-bold"]}>{@room.name}</span>
+      <.unread_message_counter count={@unread_count} />
     </.link>
+    """
+  end
+
+  attr :count, :integer, required: true
+
+  defp unread_message_counter(assigns) do
+    ~H"""
+    <span
+      :if={@count > 0}
+      class="flex items-center justify-center bg-blue-500 rounded-full font-medium h-5 px-2 ml-auto text-xs text-white"
+    >
+      {@count}
+    </span>
     """
   end
 
   # This is called whenever the page is refreshed
   # This is called whenever the a new live view is loaded
   def mount(_params, _session, socket) do
-    rooms = Chat.list_joined_rooms(socket.assigns.current_scope.user)
+    rooms = Chat.list_joined_rooms_with_unread_counts(socket.assigns.current_scope.user)
     users = Accounts.list_users()
 
     timezone = get_connect_params(socket)["timezone"]
@@ -310,6 +330,8 @@ defmodule SlaxWeb.ChatRoomLive do
     end
 
     OnlineUsers.subscribe()
+
+    Enum.each(rooms, fn {chat, _} -> Chat.subscribe_to_room(chat) end)
 
     socket =
       socket
@@ -328,9 +350,6 @@ defmodule SlaxWeb.ChatRoomLive do
   # This is called whenever a new topic/room is loaded.
   # This is called whenever the same live view is loaded
   def handle_params(params, _uri, socket) do
-    # unsubscribe from the old room
-    if socket.assigns[:room], do: Chat.unsubscribe_from_room(socket.assigns.room)
-
     # get the new room
     room = params |> Map.fetch!("id") |> Chat.get_room!()
 
@@ -343,8 +362,6 @@ defmodule SlaxWeb.ChatRoomLive do
 
     # update the message the user last saw
     Chat.update_last_read_at(room, socket.assigns.current_scope.user)
-    # subscribe to the new room
-    Chat.subscribe_to_room(room)
 
     socket =
       socket
@@ -357,6 +374,14 @@ defmodule SlaxWeb.ChatRoomLive do
       |> stream(:messages, messages, reset: true)
       |> assign_message_form(Chat.change_message(%Message{}, %{}, socket.assigns.current_scope))
       |> push_event("scroll_messages_to_bottom", %{})
+      |> update(:rooms, fn rooms ->
+        room_id = room.id
+
+        Enum.map(rooms, fn
+          {%Room{id: ^room_id} = room, _} -> {room, 0}
+          other -> other
+        end)
+      end)
 
     {:noreply, socket}
   end
@@ -415,23 +440,47 @@ defmodule SlaxWeb.ChatRoomLive do
     current_user = socket.assigns.current_scope.user
     Chat.join_room!(socket.assigns.room, current_user)
     Chat.subscribe_to_room(socket.assigns.room)
-    socket = assign(socket, joined?: true, rooms: Chat.list_joined_rooms(current_user))
+
+    socket =
+      assign(socket,
+        joined?: true,
+        rooms: Chat.list_joined_rooms_with_unread_counts(current_user)
+      )
+
     {:noreply, socket}
   end
 
   # Streams are useful for rendering chunks of data (like lists)
   # on the client instead of the server.
   # This is an optimization.
+  # This is called by pubsub through a message to the process asynchronously
   def handle_info({:new_message, message}, socket) do
-    if message.room_id == socket.assigns.room.id do
-      Chat.update_last_read_at(message.room, socket.assigns.current_scope.user)
-    end
+    room = socket.assigns.room
 
     socket =
-      socket
-      |> stream_insert(:messages, message)
-      # When you push an event with push_event/3, you’re pushing an event to the client
-      |> push_event("scroll_messages_to_bottom", %{})
+      cond do
+        # If the new message is in the current room, the behavior is exactly the same as before:
+        message.room_id == room.id ->
+          Chat.update_last_read_at(room, socket.assigns.current_scope.user)
+
+          socket
+          |> stream_insert(:messages, message)
+          |> push_event("scroll_messages_to_bottom", %{})
+
+        # Else, if the new message was not sent by us, we find the room in @rooms and increment its unread count:
+        message.user_id != socket.assigns.current_scope.user.id ->
+          update(socket, :rooms, fn rooms ->
+            # credo:disable-for-next-line Credo.Check.Refactor.Nesting
+            Enum.map(rooms, fn
+              {%Room{id: id} = room, count} when id == message.room_id -> {room, count + 1}
+              other -> other
+            end)
+          end)
+
+        # Else, there’s nothing to update, so we return the socket unchanged.
+        true ->
+          socket
+      end
 
     {:noreply, socket}
   end
